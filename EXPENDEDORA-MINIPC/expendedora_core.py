@@ -1,4 +1,5 @@
-import RPi.GPIO as GPIO
+from gpio_sim import GPIO
+import time
 import requests
 import sqlite3
 import threading
@@ -37,9 +38,12 @@ promo3_count = 0
 
 # --- CONFIGURACIÓN GPIO ---
 GPIO.setmode(GPIO.BCM)
-GPIO.setup([ECOIN, AC, TEST, TEST1, TEST2, BOTON, BARRERA, ENTHOPER], GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup([SALIDA, SALHOPER, SAL1], GPIO.OUT)
-GPIO.output([SALIDA, SALHOPER, SAL1], GPIO.LOW)
+for pin in [ECOIN, AC, TEST, TEST1, TEST2, BOTON, BARRERA, ENTHOPER]:
+    GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+for pin in [SALIDA, SALHOPER, SAL1]:
+    GPIO.setup(pin, GPIO.OUT)
+    GPIO.output(pin, GPIO.LOW)
 
 # --- CONFIGURACIÓN DE BASE DE DATOS ---
 def init_db():
@@ -156,6 +160,20 @@ def entregar_fichas():
         GPIO.output(SALIDA, GPIO.LOW)
         fichas -= 1
         time.sleep(0.4)
+
+# --- FUNCIONES PARA LA GUI ---
+def obtener_dinero_ingresado():
+    return cuenta
+
+def obtener_fichas_disponibles():
+    return fichas
+
+def expender_fichas(cantidad):
+    global fichas, cuenta
+    if fichas >= cantidad:
+        fichas -= cantidad
+        return True
+    return False
 
 # --- PROGRAMA PRINCIPAL ---
 def main():
