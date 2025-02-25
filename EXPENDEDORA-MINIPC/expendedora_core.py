@@ -5,6 +5,12 @@ import sqlite3
 import threading
 import time
 import tkinter as tk
+import json
+import os
+from datetime import datetime
+
+config_file = "config.json"
+registro_file = "registro.json"
 
 # --- CONFIGURACIÓN DE PINES ---
 ECOIN = 35  
@@ -35,6 +41,59 @@ r_sal = 0
 promo1_count = 0
 promo2_count = 0
 promo3_count = 0
+
+# ----------CONEXION CON GUI Y LOGICA PARA GUARDAR REGISTROS---------------
+def cargar_configuracion():
+    if os.path.exists(config_file):
+        with open(config_file, 'r') as f:
+            return json.load(f)
+    else:
+        return {"promociones": {}, "valor_ficha": 1.0}
+
+def guardar_configuracion(config):
+    with open(config_file, 'w') as f:
+        json.dump(config, f, indent=4)
+
+def iniciar_apertura():
+    registro = {
+        "apertura": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        "fichas_expendidas": 0,
+        "dinero_ingresado": 0,
+        "promociones_usadas": {
+            "Promo 1": 0,
+            "Promo 2": 0,
+            "Promo 3": 0
+        }
+    }
+    guardar_registro(registro)
+    return registro
+
+def cargar_registro():
+    if os.path.exists(registro_file):
+        with open(registro_file, 'r') as f:
+            return json.load(f)
+    else:
+        return iniciar_apertura()
+
+def guardar_registro(registro):
+    with open(registro_file, 'w') as f:
+        json.dump(registro, f, indent=4)
+
+def actualizar_registro(tipo, cantidad):
+    registro = cargar_registro()
+    if tipo == "ficha":
+        registro["fichas_expendidas"] += cantidad
+        registro["dinero_ingresado"] += cantidad * cargar_configuracion()["valor_ficha"]
+    elif tipo in ["Promo 1", "Promo 2", "Promo 3"]:
+        registro["promociones_usadas"][tipo] += 1
+        registro["dinero_ingresado"] += cargar_configuracion()["promociones"][tipo]["precio"]
+    guardar_registro(registro)
+
+def realizar_cierre():
+    registro = cargar_registro()
+    registro["cierre"] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    guardar_registro(registro)
+    return registro
 
 # --- CONFIGURACIÓN GPIO ---
 GPIO.setmode(GPIO.BCM)
