@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
-from expendedora_core import obtener_dinero_ingresado, obtener_fichas_disponibles, expender_fichas
+import json
+import os
 
 class ExpendedoraGUI:
     def __init__(self, root):
@@ -9,15 +10,17 @@ class ExpendedoraGUI:
         self.root.geometry("800x500")
         self.root.configure(bg="#f0f0f0")
 
-        # Diccionario para almacenar las configuraciones de las promociones
+        # Inicializar variables de configuración
         self.promociones = {
             "Promo 1": {"precio": 0, "fichas": 0},
             "Promo 2": {"precio": 0, "fichas": 0},
             "Promo 3": {"precio": 0, "fichas": 0}
         }
-
-        # Valor de cada ficha
         self.valor_ficha = 1.0
+
+        # Archivo de configuración
+        self.config_file = "config.json"
+        self.cargar_configuracion()
 
         # Contadores de la página principal
         self.contadores = {
@@ -84,8 +87,8 @@ class ExpendedoraGUI:
         # Página de reportes y cierre del día
         self.reportes_frame = tk.Frame(root, bg="#ffffff")
         tk.Label(self.reportes_frame, text="Cierre y Reportes", font=("Arial", 14, "bold"), bg="#fff").pack(pady=10)
-        tk.Button(self.reportes_frame, text="Realizar Apertura", bg="#007BFF", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
-        tk.Button(self.reportes_frame, text="Realizar Cierre", bg="#D32F2F", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.reportes_frame, text="Realizar Apertura", command=self.realizar_apertura, bg="#007BFF", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.reportes_frame, text="Realizar Cierre", command=self.realizar_cierre, bg="#D32F2F", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
 
         self.mostrar_frame(self.main_frame)
 
@@ -93,6 +96,23 @@ class ExpendedoraGUI:
         for f in [self.main_frame, self.config_frame, self.reportes_frame, self.simulacion_frame]:
             f.pack_forget()
         frame.pack(fill="both", expand=True)
+
+    def cargar_configuracion(self):
+        if os.path.exists(self.config_file):
+            with open(self.config_file, 'r') as f:
+                config = json.load(f)
+                self.promociones = config.get("promociones", self.promociones)
+                self.valor_ficha = config.get("valor_ficha", self.valor_ficha)
+        else:
+            self.guardar_configuracion()
+
+    def guardar_configuracion(self):
+        config = {
+            "promociones": self.promociones,
+            "valor_ficha": self.valor_ficha
+        }
+        with open(self.config_file, 'w') as f:
+            json.dump(config, f, indent=4)
 
     def configurar_promo(self, promo):
         config_window = tk.Toplevel(self.root)
@@ -114,6 +134,7 @@ class ExpendedoraGUI:
             try:
                 self.promociones[promo]["precio"] = float(precio_entry.get())
                 self.promociones[promo]["fichas"] = int(fichas_entry.get())
+                self.guardar_configuracion()
                 config_window.destroy()
             except ValueError:
                 messagebox.showerror("Error", "Ingrese valores numéricos válidos.")
@@ -135,6 +156,7 @@ class ExpendedoraGUI:
         def guardar_valor_ficha():
             try:
                 self.valor_ficha = float(valor_entry.get())
+                self.guardar_configuracion()
                 config_window.destroy()
             except ValueError:
                 messagebox.showerror("Error", "Ingrese un valor numérico válido.")
@@ -166,13 +188,40 @@ class ExpendedoraGUI:
         tk.Button(fichas_window, text="Confirmar", command=confirmar_fichas, bg="#007BFF", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
         tk.Button(fichas_window, text="Cancelar", command=fichas_window.destroy, bg="#D32F2F", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
 
+    def realizar_apertura(self):
+        # Inicia la apertura del día
+        self.contadores = {
+            "fichas_expendidas": 0,
+            "dinero_ingresado": 0,
+            "promo1_contador": 0,
+            "promo2_contador": 0,
+            "promo3_contador": 0,
+            "fichas_restantes": 0
+        }
+        self.actualizar_contadores_gui()
+        messagebox.showinfo("Apertura", "Apertura del día realizada con éxito.")
+
+    def realizar_cierre(self):
+        # Realiza el cierre del día
+        cierre_info = (
+            f"Fichas expendidas: {self.contadores['fichas_expendidas']}\n"
+            f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}\n"
+            f"Promo 1 usadas: {self.contadores['promo1_contador']}\n"
+            f"Promo 2 usadas: {self.contadores['promo2_contador']}\n"
+            f"Promo 3 usadas: {self.contadores['promo3_contador']}\n"
+            f"Fichas restantes: {self.contadores['fichas_restantes']}"
+        )
+        messagebox.showinfo("Cierre", f"Cierre del día realizado:\n{cierre_info}")
+
+    def actualizar_contadores_gui(self):
+        for key in self.contadores_labels:
+            self.contadores_labels[key].config(text=f"{key.replace('_', ' ').title()}: {self.contadores[key]}")
+
     def expender_fichas_gui(self):
         if self.contadores["fichas_restantes"] > 0:
-            if expender_fichas(1):
-                self.contadores["fichas_restantes"] -= 1
-                self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
-                self.contadores["fichas_expendidas"] += 1
-                self.contadores_labels["fichas_expendidas"].config(text=f"Fichas expendidas: {self.contadores['fichas_expendidas']}")
+            self.contadores["fichas_restantes"] -= 1
+            self.contadores["fichas_expendidas"] += 1
+            self.actualizar_contadores_gui()
         else:
             messagebox.showerror("Error", "No hay suficientes fichas.")
 
@@ -189,16 +238,20 @@ class ExpendedoraGUI:
         if self.contadores["fichas_restantes"] > 0:
             self.contadores["fichas_expendidas"] += 1
             self.contadores["fichas_restantes"] -= 1
-            self.contadores_labels["fichas_expendidas"].config(text=f"Fichas expendidas: {self.contadores['fichas_expendidas']}")
-            self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+            self.actualizar_contadores_gui()
         else:
             messagebox.showerror("Error", "No hay suficientes fichas.")
             
     def simular_promo(self, promo):
+        # Aumentar el número de fichas restantes según la promoción
         self.contadores["fichas_restantes"] += self.promociones[promo]["fichas"]
         self.contadores_labels["fichas_restantes"].config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+        
+        # Aumentar el dinero ingresado según el precio de la promoción
         self.contadores["dinero_ingresado"] += self.promociones[promo]["precio"]
         self.contadores_labels["dinero_ingresado"].config(text=f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}")
+        
+        # Incrementar el contador de la promoción correspondiente
         self.contadores[f"{promo.lower()}_contador"] += 1
         self.contadores_labels[f"{promo.lower()}_contador"].config(text=f"{promo} usadas: {self.contadores[f'{promo.lower()}_contador']}")
 
