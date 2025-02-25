@@ -11,10 +11,13 @@ class ExpendedoraGUI:
 
         # Diccionario para almacenar las configuraciones de las promociones
         self.promociones = {
-            "Promo 1": {"precio": "", "fichas": ""},
-            "Promo 2": {"precio": "", "fichas": ""},
-            "Promo 3": {"precio": "", "fichas": ""}
+            "Promo 1": {"precio": 0, "fichas": 0},
+            "Promo 2": {"precio": 0, "fichas": 0},
+            "Promo 3": {"precio": 0, "fichas": 0}
         }
+
+        # Valor de cada ficha
+        self.valor_ficha = 1.0
 
         # Contadores de la página principal
         self.contadores = {
@@ -66,12 +69,17 @@ class ExpendedoraGUI:
         tk.Button(self.simulacion_frame, text="Simular Billetero", command=self.simular_billetero, bg="#007BFF", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
         tk.Button(self.simulacion_frame, text="Simular Barrera", command=self.simular_barrera, bg="#FF5722", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
         tk.Button(self.simulacion_frame, text="Simular Entrega de Fichas", command=self.simular_entrega_fichas, bg="#4CAF50", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.simulacion_frame, text="Simular Salida de Fichas", command=self.simular_salida_fichas, bg="#FFC107", fg="black", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.simulacion_frame, text="Simular Promo 1", command=lambda: self.simular_promo("Promo 1"), bg="#FF9800", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.simulacion_frame, text="Simular Promo 2", command=lambda: self.simular_promo("Promo 2"), bg="#FF9800", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.simulacion_frame, text="Simular Promo 3", command=lambda: self.simular_promo("Promo 3"), bg="#FF9800", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
 
         # Página de configuración
         self.config_frame = tk.Frame(root, bg="#ffffff")
         tk.Label(self.config_frame, text="Configuración de Promociones", font=("Arial", 14, "bold"), bg="#fff").pack(pady=10)
         for promo in ["Promo 1", "Promo 2", "Promo 3"]:
             tk.Button(self.config_frame, text=f"Configurar {promo}", command=lambda p=promo: self.configurar_promo(p), bg="#007BFF", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.config_frame, text="Configurar Valor de Ficha", command=self.configurar_valor_ficha, bg="#007BFF", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
 
         # Página de reportes y cierre del día
         self.reportes_frame = tk.Frame(root, bg="#ffffff")
@@ -89,7 +97,7 @@ class ExpendedoraGUI:
     def configurar_promo(self, promo):
         config_window = tk.Toplevel(self.root)
         config_window.title(f"Configurar {promo}")
-        config_window.geometry("300x200")
+        config_window.geometry("300x250")
         config_window.configure(bg="#ffffff")
         
         tk.Label(config_window, text="Precio (en $):", bg="#ffffff", font=("Arial", 12)).pack(pady=10)
@@ -113,6 +121,27 @@ class ExpendedoraGUI:
         tk.Button(config_window, text="Guardar", command=guardar_promo, bg="#4CAF50", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
         tk.Button(config_window, text="Cancelar", command=config_window.destroy, bg="#D32F2F", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
 
+    def configurar_valor_ficha(self):
+        config_window = tk.Toplevel(self.root)
+        config_window.title("Configurar Valor de Ficha")
+        config_window.geometry("300x150")
+        config_window.configure(bg="#ffffff")
+        
+        tk.Label(config_window, text="Valor de cada ficha (en $):", bg="#ffffff", font=("Arial", 12)).pack(pady=10)
+        valor_entry = tk.Entry(config_window, font=("Arial", 12), bd=2, relief="solid")
+        valor_entry.insert(0, self.valor_ficha)
+        valor_entry.pack(pady=5, padx=10, fill='x')
+        
+        def guardar_valor_ficha():
+            try:
+                self.valor_ficha = float(valor_entry.get())
+                config_window.destroy()
+            except ValueError:
+                messagebox.showerror("Error", "Ingrese un valor numérico válido.")
+        
+        tk.Button(config_window, text="Guardar", command=guardar_valor_ficha, bg="#4CAF50", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
+        tk.Button(config_window, text="Cancelar", command=config_window.destroy, bg="#D32F2F", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
+
     def elegir_fichas(self):
         fichas_window = tk.Toplevel(self.root)
         fichas_window.title("Elegir cantidad de fichas")
@@ -125,8 +154,11 @@ class ExpendedoraGUI:
         
         def confirmar_fichas():
             try:
-                self.contadores["fichas_restantes"] = int(fichas_entry.get())
+                cantidad_fichas = int(fichas_entry.get())
+                self.contadores["fichas_restantes"] = cantidad_fichas
                 self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+                self.contadores["dinero_ingresado"] += cantidad_fichas * self.valor_ficha
+                self.contadores_labels["dinero_ingresado"].config(text=f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}")
                 fichas_window.destroy()
             except ValueError:
                 messagebox.showerror("Error", "Ingrese un valor numérico válido.")
@@ -135,11 +167,12 @@ class ExpendedoraGUI:
         tk.Button(fichas_window, text="Cancelar", command=fichas_window.destroy, bg="#D32F2F", fg="white", font=("Arial", 12), bd=0).pack(pady=5)
 
     def expender_fichas_gui(self):
-        if expender_fichas(1):
-            self.contadores["fichas_restantes"] -= 1
-            self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
-            self.contadores["fichas_expendidas"] += 1
-            self.contadores_labels["fichas_expendidas"].config(text=f"Fichas expendidas: {self.contadores['fichas_expendidas']}")
+        if self.contadores["fichas_restantes"] > 0:
+            if expender_fichas(1):
+                self.contadores["fichas_restantes"] -= 1
+                self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+                self.contadores["fichas_expendidas"] += 1
+                self.contadores_labels["fichas_expendidas"].config(text=f"Fichas expendidas: {self.contadores['fichas_expendidas']}")
         else:
             messagebox.showerror("Error", "No hay suficientes fichas.")
 
@@ -151,6 +184,23 @@ class ExpendedoraGUI:
 
     def simular_entrega_fichas(self):
         messagebox.showinfo("Simulación", "Se están entregando fichas.")
+        
+    def simular_salida_fichas(self):
+        if self.contadores["fichas_restantes"] > 0:
+            self.contadores["fichas_expendidas"] += 1
+            self.contadores["fichas_restantes"] -= 1
+            self.contadores_labels["fichas_expendidas"].config(text=f"Fichas expendidas: {self.contadores['fichas_expendidas']}")
+            self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+        else:
+            messagebox.showerror("Error", "No hay suficientes fichas.")
+            
+    def simular_promo(self, promo):
+        self.contadores["fichas_restantes"] += self.promociones[promo]["fichas"]
+        self.contadores_labels["fichas_restantes"].config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+        self.contadores["dinero_ingresado"] += self.promociones[promo]["precio"]
+        self.contadores_labels["dinero_ingresado"].config(text=f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}")
+        self.contadores[f"{promo.lower()}_contador"] += 1
+        self.contadores_labels[f"{promo.lower()}_contador"].config(text=f"{promo} usadas: {self.contadores[f'{promo.lower()}_contador']}")
 
 if __name__ == "__main__":
     root = tk.Tk()
