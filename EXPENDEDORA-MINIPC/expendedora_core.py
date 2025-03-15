@@ -158,34 +158,6 @@ def enviar_cierre_diario():
 
     r_cuenta = r_sal = promo1_count = promo2_count = promo3_count = 0  
 
-# --- MANEJO DE INTERFAZ GRÁFICA (TKINTER) ---
-class ExpendedoraGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Expendedora de Fichas")
-        self.root.geometry("400x300")
-
-        # Etiquetas para mostrar los datos
-        self.label_cuenta = tk.Label(root, text="Dinero ingresado: 0", font=("Arial", 14))
-        self.label_cuenta.pack(pady=10)
-
-        self.label_fichas = tk.Label(root, text="Fichas disponibles: 0", font=("Arial", 14))
-        self.label_fichas.pack(pady=10)
-
-        self.boton_convertir = tk.Button(root, text="Convertir Dinero a Fichas", command=convertir_fichas, font=("Arial", 12))
-        self.boton_convertir.pack(pady=10)
-
-        self.boton_cierre = tk.Button(root, text="Enviar Cierre Diario", command=enviar_cierre_diario, font=("Arial", 12))
-        self.boton_cierre.pack(pady=10)
-
-        # Actualizar la interfaz cada 1 segundo
-        self.actualizar_pantalla()
-
-    def actualizar_pantalla(self):
-        self.label_cuenta.config(text=f"Dinero ingresado: {cuenta}")
-        self.label_fichas.config(text=f"Fichas disponibles: {fichas}")
-        self.root.after(1000, self.actualizar_pantalla)  # Se actualiza cada segundo
-
 # --- CONVERSIÓN DE DINERO A FICHAS ---
 def convertir_fichas():
     global cuenta, fichas, r_sal
