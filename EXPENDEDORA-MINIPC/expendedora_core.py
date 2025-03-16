@@ -1,3 +1,4 @@
+from expendedora_gui import ExpendedoraGUI
 from gpio_sim import GPIO
 import time
 import requests
@@ -30,7 +31,7 @@ BARRERA = 34
 DB_FILE = "expendedora.db"
 
 # --- CONFIGURACIÓN DE SERVIDORES ---
-SERVER_HEARTBEAT = "https://www.maquinasbonus.com/esp32_project/insert_heartbeat.php"
+SERVER_HEARTBEAT = "http://192.168.1.33/esp32_project/insert_heartbeat.php"
 SERVER_CIERRE = "https://www.maquinasbonus.com/esp32_project/insert_close_expendedora.php"
 
 # --- VARIABLES DEL SISTEMA ---
