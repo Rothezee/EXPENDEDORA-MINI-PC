@@ -3,6 +3,10 @@ from tkinter import messagebox
 import json
 import os
 from datetime import datetime
+import requests
+
+url = "http://192.168.1.33/esp32_project/EXPENDEDORA/insert_close_expendedora.php"  # URL DE CIERRES 
+urlDatos = "http://192.168.1.33/esp32_project/expendedora/insert_data_expendedora.php"  # URL DE REPORTES
 
 class ExpendedoraGUI:
     def __init__(self, root):
@@ -130,6 +134,22 @@ class ExpendedoraGUI:
 
         self.mostrar_frame(self.main_frame)
 
+    def enviar_datos_al_servidor(self):
+        datos = {
+            "device_id": "EXPENDEDORA_1",
+            "dato1": self.contadores['fichas_expendidas'],
+            "dato2": self.contadores['dinero_ingresado'],
+        }
+
+        try:
+            response = requests.post(urlDatos, json=datos)
+            if response.status_code == 200:
+                print("Datos enviados con éxito")
+            else:
+                print(f"Error al enviar datos: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error al conectar con el servidor: {e}")
+
     def mostrar_frame(self, frame):
         for f in [self.main_frame, self.config_frame, self.reportes_frame, self.simulacion_frame]:
             f.pack_forget()
@@ -226,6 +246,7 @@ class ExpendedoraGUI:
                 self.contadores_apertura["dinero_ingresado"] += cantidad_fichas * self.valor_ficha  # Actualizar el contador de apertura
                 self.contadores_labels["dinero_ingresado"].config(text=f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}")
                 self.guardar_configuracion()  # Guardar los contadores actualizados
+                self.actualizar_contadores_gui()
                 fichas_window.destroy()
             except ValueError:
                 messagebox.showerror("Error", "Ingrese un valor numérico válido.")
@@ -249,15 +270,43 @@ class ExpendedoraGUI:
 
     def realizar_cierre(self):
         # Realiza el cierre del día
-        cierre_info = (
-            f"Fichas expendidas: {self.contadores_apertura['fichas_expendidas']}\n"
-            f"Dinero ingresado: ${self.contadores_apertura['dinero_ingresado']:.2f}\n"
-            f"Promo 1 usadas: {self.contadores_apertura['promo1_contador']}\n"
-            f"Promo 2 usadas: {self.contadores_apertura['promo2_contador']}\n"
-            f"Promo 3 usadas: {self.contadores_apertura['promo3_contador']}\n"
-            f"Fichas restantes: {self.contadores_apertura['fichas_restantes']}"
+        cierre_info = {
+            "device_id": "EXPENDEDORA_1",
+            "fichas_expendidas": self.contadores_apertura['fichas_expendidas'],
+            "dinero_ingresado": self.contadores_apertura['dinero_ingresado'],
+            "promo1_contador": self.contadores_apertura['promo1_contador'],
+            "promo2_contador": self.contadores_apertura['promo2_contador'],
+            "promo3_contador": self.contadores_apertura['promo3_contador'],
+            "fichas_restantes": self.contadores_apertura['fichas_restantes']
+        }
+        info = {
+            "device_id": "EXPENDEDORA_1",
+            "fichas": self.contadores_apertura['fichas_expendidas'],
+            "dinero": self.contadores_apertura['dinero_ingresado'],
+            "p1": self.contadores_apertura['promo1_contador'],
+            "p2": self.contadores_apertura['promo2_contador'],
+            "p3": self.contadores_apertura['promo3_contador']
+        }
+        mensaje_cierre = (
+            f"Fichas expendidas: {cierre_info['fichas_expendidas']}\n"
+            f"Dinero ingresado: ${cierre_info['dinero_ingresado']:.2f}\n"
+            f"Promo 1 usadas: {cierre_info['promo1_contador']}\n"
+            f"Promo 2 usadas: {cierre_info['promo2_contador']}\n"
+            f"Promo 3 usadas: {cierre_info['promo3_contador']}\n"
+            f"Fichas restantes: {cierre_info['fichas_restantes']}"
         )
-        messagebox.showinfo("Cierre", f"Cierre del día realizado:\n{cierre_info}")
+        messagebox.showinfo("Cierre", f"Cierre del día realizado:\n{mensaje_cierre}")
+        
+        # Enviar datos al servidor
+        try:
+            response = requests.post(url, json=info)
+            if response.status_code == 200:
+                print("Datos de cierre enviados con éxito")
+            else:
+                print(f"Error al enviar datos de cierre: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error al conectar con el servidor: {e}")
+        
         self.contadores_apertura = {
             "fichas_expendidas": 0,
             "dinero_ingresado": 0,
@@ -280,6 +329,8 @@ class ExpendedoraGUI:
             self.contadores_apertura["fichas_expendidas"] += 1  # Actualizar el contador de apertura
             self.actualizar_contadores_gui()
             self.guardar_configuracion()
+            if self.contadores["fichas_restantes"] == 0:
+                self.enviar_datos_al_servidor()
         else:
             messagebox.showerror("Error", "No hay suficientes fichas.")
 
@@ -300,6 +351,8 @@ class ExpendedoraGUI:
             self.contadores_apertura["fichas_restantes"] -= 1  # Actualizar el contador de apertura
             self.actualizar_contadores_gui()
             self.guardar_configuracion()
+            if self.contadores["fichas_restantes"] == 0:
+                self.enviar_datos_al_servidor()
         else:
             messagebox.showerror("Error", "No hay suficientes fichas.")
             
@@ -342,4 +395,3 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = ExpendedoraGUI(root)
     root.mainloop()
-           
