@@ -2,7 +2,7 @@ import threading
 import tkinter as tk
 from expendedora_gui import ExpendedoraGUI
 from expendedora_core import enviar_pulso, init_db
-
+from User_management import UserManagement
 def start_gui():
     root = tk.Tk()
     app = ExpendedoraGUI(root)
@@ -19,4 +19,6 @@ def main():
     start_gui()
 
 if __name__ == "__main__":
+    app = UserManagement()
+    app.run()
     main()
