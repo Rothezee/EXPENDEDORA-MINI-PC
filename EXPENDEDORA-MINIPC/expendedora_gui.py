@@ -4,9 +4,11 @@ import json
 import os
 from datetime import datetime
 import requests
+from User_management import UserManagement
 
 url = "http://192.168.1.33/esp32_project/EXPENDEDORA/insert_close_expendedora.php"  # URL DE CIERRES 
 urlDatos = "http://192.168.1.33/esp32_project/expendedora/insert_data_expendedora.php"  # URL DE REPORTES
+urlSubCierre = "http://192.168.1.33/esp32_project/EXPENDEDORA/insert_subclose_expendedora.php"  # URL DE SUBCIERRES
 
 class ExpendedoraGUI:
     def __init__(self, root, username):
@@ -43,6 +45,16 @@ class ExpendedoraGUI:
             "fichas_restantes": 0
         }
 
+        # Contadores parciales
+        self.contadores_parciales = {
+            "fichas_expendidas": 0,
+            "dinero_ingresado": 0,
+            "promo1_contador": 0,
+            "promo2_contador": 0,
+            "promo3_contador": 0,
+            "fichas_restantes": 0
+        }
+
         # Archivo de configuración
         self.config_file = "config.json"
         self.cargar_configuracion()
@@ -53,6 +65,7 @@ class ExpendedoraGUI:
 
         tk.Label(self.header_frame, text="Expendedora - Control", bg="#333", fg="white", font=("Arial", 16, "bold")).pack(side="left", padx=10)
         tk.Label(self.header_frame, text=f"{username}", bg="#333", fg="white", font=("Arial", 12)).pack(side="right", padx=10)
+        
 
         # Menú lateral
         self.menu_frame = tk.Frame(root, width=200, bg="#333")
@@ -64,6 +77,7 @@ class ExpendedoraGUI:
         tk.Button(self.menu_frame, text="Configuración", bg="#444", fg="white", font=("Arial", 12), width=20, command=lambda: self.mostrar_frame(self.config_frame)).pack(pady=5)
         tk.Button(self.menu_frame, text="Cierre y Reportes", bg="#444", fg="white", font=("Arial", 12), width=20, command=lambda: self.mostrar_frame(self.reportes_frame)).pack(pady=5)
         tk.Button(self.menu_frame, text="Simulación", bg="#444", fg="white", font=("Arial", 12), width=20, command=lambda: self.mostrar_frame(self.simulacion_frame)).pack(pady=5)
+        tk.Button(self.menu_frame, text="Cerrar Sesión", bg="#D32F2F", fg="white", font=("Arial", 12), width=20, command=self.cerrar_sesion).pack(pady=(50, 5))
 
         # Página principal
         self.main_frame = tk.Frame(root, bg="#f4f4f4")
@@ -122,6 +136,7 @@ class ExpendedoraGUI:
         tk.Label(self.reportes_frame, text="Cierre y Reportes", font=("Arial", 14, "bold"), bg="#fff").pack(pady=10)
         tk.Button(self.reportes_frame, text="Realizar Apertura", command=self.realizar_apertura, bg="#007BFF", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
         tk.Button(self.reportes_frame, text="Realizar Cierre", command=self.realizar_cierre, bg="#D32F2F", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)
+        tk.Button(self.reportes_frame, text="Realizar Cierre Parcial", command=self.realizar_cierre_parcial, bg="#FF9800", fg="white", font=("Arial", 12), width=20, bd=0).pack(pady=5)  # Botón de Cierre Parcial
 
         # Footer
         self.footer_frame = tk.Frame(root, bg="#333")
@@ -163,6 +178,7 @@ class ExpendedoraGUI:
                 self.valor_ficha = config.get("valor_ficha", self.valor_ficha)
                 self.contadores = config.get("contadores", self.contadores)
                 self.contadores_apertura = config.get("contadores_apertura", self.contadores_apertura)
+                self.contadores_parciales = config.get("contadores_parciales", self.contadores_parciales)
         else:
             self.guardar_configuracion()
 
@@ -171,7 +187,8 @@ class ExpendedoraGUI:
             "promociones": self.promociones,
             "valor_ficha": self.valor_ficha,
             "contadores": self.contadores,
-            "contadores_apertura": self.contadores_apertura
+            "contadores_apertura": self.contadores_apertura,
+            "contadores_parciales": self.contadores_parciales
         }
         with open(self.config_file, 'w') as f:
             json.dump(config, f, indent=4)
@@ -241,9 +258,16 @@ class ExpendedoraGUI:
                 cantidad_fichas = int(fichas_entry.get())
                 self.contadores["fichas_restantes"] += cantidad_fichas  # Sumar fichas en lugar de asignar
                 self.contadores_apertura["fichas_restantes"] += cantidad_fichas  # Actualizar el contador de apertura
+                self.contadores_parciales["fichas_restantes"] += cantidad_fichas  # Actualizar el contador parcial
                 self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
                 self.contadores["dinero_ingresado"] += cantidad_fichas * self.valor_ficha
                 self.contadores_apertura["dinero_ingresado"] += cantidad_fichas * self.valor_ficha  # Actualizar el contador de apertura
+                self.contadores_parciales["dinero_ingresado"] += cantidad_fichas * self.valor_ficha  # Actualizar el
+                self.contadores_parciales["dinero_ingresado"] += cantidad_fichas * self.valor_ficha  # Actualizar el contador parcial
+                self.fichas_restantes_label.config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
+                self.contadores["dinero_ingresado"] += cantidad_fichas * self.valor_ficha
+                self.contadores_apertura["dinero_ingresado"] += cantidad_fichas * self.valor_ficha  # Actualizar el contador de apertura
+                self.contadores_parciales["dinero_ingresado"] += cantidad_fichas * self.valor_ficha  # Actualizar el contador parcial
                 self.contadores_labels["dinero_ingresado"].config(text=f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}")
                 self.guardar_configuracion()  # Guardar los contadores actualizados
                 self.actualizar_contadores_gui()
@@ -257,6 +281,14 @@ class ExpendedoraGUI:
     def realizar_apertura(self):
         # Inicia la apertura del día
         self.contadores_apertura = {
+            "fichas_expendidas": 0,
+            "dinero_ingresado": 0,
+            "promo1_contador": 0,
+            "promo2_contador": 0,
+            "promo3_contador": 0,
+            "fichas_restantes": 0
+        }
+        self.contadores_parciales = {
             "fichas_expendidas": 0,
             "dinero_ingresado": 0,
             "promo1_contador": 0,
@@ -315,7 +347,64 @@ class ExpendedoraGUI:
             "promo3_contador": 0,
             "fichas_restantes": 0
         }
+        self.contadores_parciales = {
+            "fichas_expendidas": 0,
+            "dinero_ingresado": 0,
+            "promo1_contador": 0,
+            "promo2_contador": 0,
+            "promo3_contador": 0,
+            "fichas_restantes": 0
+        }
         self.guardar_configuracion()
+
+    def realizar_cierre_parcial(self):
+        # Realiza el cierre parcial
+        subcierre_info = {
+            "device_id": "EXPENDEDORA_1",
+            "partial_fichas": self.contadores_parciales['fichas_expendidas'],
+            "partial_dinero": self.contadores_parciales['dinero_ingresado'],
+            "partial_p1": self.contadores_parciales['promo1_contador'],
+            "partial_p2": self.contadores_parciales['promo2_contador'],
+            "partial_p3": self.contadores_parciales['promo3_contador'],
+            "employee_id": 1  # Reemplazar con el ID del empleado actual
+        }
+        
+        mensaje_subcierre = (
+            f"Fichas expendidas: {subcierre_info['partial_fichas']}\n"
+            f"Dinero ingresado: ${subcierre_info['partial_dinero']:.2f}\n"
+            f"Promo 1 usadas: {subcierre_info['partial_p1']}\n"
+            f"Promo 2 usadas: {subcierre_info['partial_p2']}\n"
+            f"Promo 3 usadas: {subcierre_info['partial_p3']}"
+        )
+        messagebox.showinfo("Cierre Parcial", f"Cierre parcial realizado:\n{mensaje_subcierre}")
+        
+        # Enviar datos al servidor
+        try:
+            response = requests.post(urlSubCierre, json=subcierre_info)
+            if response.status_code == 200:
+                print("Datos de cierre parcial enviados con éxito")
+            else:
+                print(f"Error al enviar datos de cierre parcial: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error al conectar con el servidor: {e}")
+
+        # Reiniciar los contadores parciales
+        self.contadores_parciales = {
+            "fichas_expendidas": 0,
+            "dinero_ingresado": 0,
+            "promo1_contador": 0,
+            "promo2_contador": 0,
+            "promo3_contador": 0,
+            "fichas_restantes": 0
+        }
+        self.guardar_configuracion()
+
+    def cerrar_sesion(self):
+        # Realizar cierre parcial antes de cerrar sesión
+        messagebox.showinfo("Cerrar Sesión", "La sesión ha sido cerrada.")
+        self.root.destroy()
+        user_management = UserManagement(self.root)
+        user_management.run()  # No se pasa ningún argumento aquí
 
     def actualizar_contadores_gui(self):
         for key in self.contadores_labels:
@@ -325,8 +414,10 @@ class ExpendedoraGUI:
         if self.contadores["fichas_restantes"] > 0:
             self.contadores["fichas_restantes"] -= 1
             self.contadores_apertura["fichas_restantes"] -= 1  # Actualizar el contador de apertura
+            self.contadores_parciales["fichas_restantes"] -= 1  # Actualizar el contador parcial
             self.contadores["fichas_expendidas"] += 1
             self.contadores_apertura["fichas_expendidas"] += 1  # Actualizar el contador de apertura
+            self.contadores_parciales["fichas_expendidas"] += 1  # Actualizar el contador parcial
             self.actualizar_contadores_gui()
             self.guardar_configuracion()
             if self.contadores["fichas_restantes"] == 0:
@@ -347,8 +438,10 @@ class ExpendedoraGUI:
         if self.contadores["fichas_restantes"] > 0:
             self.contadores["fichas_expendidas"] += 1
             self.contadores_apertura["fichas_expendidas"] += 1  # Actualizar el contador de apertura
+            self.contadores_parciales["fichas_expendidas"] += 1  # Actualizar el contador parcial
             self.contadores["fichas_restantes"] -= 1
             self.contadores_apertura["fichas_restantes"] -= 1  # Actualizar el contador de apertura
+            self.contadores_parciales["fichas_restantes"] -= 1  # Actualizar el contador parcial
             self.actualizar_contadores_gui()
             self.guardar_configuracion()
             if self.contadores["fichas_restantes"] == 0:
@@ -360,11 +453,13 @@ class ExpendedoraGUI:
         # Aumentar el número de fichas restantes según la promoción
         self.contadores["fichas_restantes"] += self.promociones[promo]["fichas"]  # Sumar fichas en lugar de asignar
         self.contadores_apertura["fichas_restantes"] += self.promociones[promo]["fichas"]  # Actualizar el contador de apertura
+        self.contadores_parciales["fichas_restantes"] += self.promociones[promo]["fichas"]  # Actualizar el contador parcial
         self.contadores_labels["fichas_restantes"].config(text=f"Fichas restantes: {self.contadores['fichas_restantes']}")
         
         # Aumentar el dinero ingresado según el precio de la promoción
         self.contadores["dinero_ingresado"] += self.promociones[promo]["precio"]
         self.contadores_apertura["dinero_ingresado"] += self.promociones[promo]["precio"]  # Actualizar el contador de apertura
+        self.contadores_parciales["dinero_ingresado"] += self.promociones[promo]["precio"]  # Actualizar el contador parcial
         self.contadores_labels["dinero_ingresado"].config(text=f"Dinero ingresado: ${self.contadores['dinero_ingresado']:.2f}")
 
         # Diccionario para simular el switch
@@ -378,6 +473,7 @@ class ExpendedoraGUI:
         if promo in promo_contadores:
             self.contadores[promo_contadores[promo]] += 1
             self.contadores_apertura[promo_contadores[promo]] += 1  # Actualizar el contador de apertura
+            self.contadores_parciales[promo_contadores[promo]] += 1  # Actualizar el contador parcial
             self.contadores_labels[promo_contadores[promo]].config(text=f"{promo} usadas: {self.contadores[promo_contadores[promo]]}")
         else:
             messagebox.showerror("Error", "Promoción no válida.")
@@ -393,5 +489,5 @@ class ExpendedoraGUI:
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = ExpendedoraGUI(root)
+    app = ExpendedoraGUI(root, "username")  # Reemplazar "username" con el nombre de usuario actual
     root.mainloop()

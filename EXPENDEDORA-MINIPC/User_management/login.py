@@ -42,7 +42,7 @@ class LoginWindow:
             self.warning_label.config(text="Por favor, complete todos los campos")
             return
 
-        user = get_user(usuario, password)
+        user = get_user(nombre = usuario, contraceña = password)
 
         if user:
             messagebox.showinfo("Login", "Login exitoso")

@@ -8,7 +8,6 @@ def start_gui():
     root = tk.Tk()
     app = ExpendedoraGUI(root, username)
     root.mainloop()
-
 def main(username):
     # Inicializar la base de datos
     init_db()
