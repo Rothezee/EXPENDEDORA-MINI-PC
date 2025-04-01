@@ -6,7 +6,7 @@ from datetime import datetime
 import requests
 from User_management import UserManagement
 
-url = "http://192.168.1.33/esp32_project/EXPENDEDORA/insert_close_expendedora.php"  # URL DE CIERRES 
+url = "http://192.168.1.33/esp32_project/expendedora/insert_close_expendedora.php"  # URL DE CIERRES 
 urlDatos = "http://192.168.1.33/esp32_project/expendedora/insert_data_expendedora.php"  # URL DE REPORTES
 urlSubCierre = "http://192.168.1.33/esp32_project/EXPENDEDORA/insert_subclose_expendedora.php"  # URL DE SUBCIERRES
 
@@ -312,7 +312,7 @@ class ExpendedoraGUI:
             "fichas_restantes": self.contadores_apertura['fichas_restantes']
         }
         info = {
-            "device_id": "EXPENDEDORA_1",
+            "id_expendedora": "EXPENDEDORA_1",
             "fichas": self.contadores_apertura['fichas_expendidas'],
             "dinero": self.contadores_apertura['dinero_ingresado'],
             "p1": self.contadores_apertura['promo1_contador'],
