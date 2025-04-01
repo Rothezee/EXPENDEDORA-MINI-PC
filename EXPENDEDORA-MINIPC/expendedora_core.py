@@ -32,7 +32,7 @@ DB_FILE = "expendedora.db"
 
 # --- CONFIGURACIÓN DE SERVIDORES ---
 SERVER_HEARTBEAT = "http://192.168.1.33/esp32_project/insert_heartbeat.php"
-SERVER_CIERRE = "https://www.maquinasbonus.com/esp32_project/insert_close_expendedora.php"
+SERVER_CIERRE = "http://192.168.1.33/esp32_project/insert_close_expendedora.php"
 
 # --- VARIABLES DEL SISTEMA ---
 cuenta = 0
