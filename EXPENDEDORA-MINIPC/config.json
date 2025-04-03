@@ -15,9 +15,9 @@
     },
     "valor_ficha": 600.0,
     "contadores": {
-        "fichas_expendidas": 74,
-        "dinero_ingresado": 37000.0,
-        "promo1_contador": 11,
+        "fichas_expendidas": 89,
+        "dinero_ingresado": 43000.0,
+        "promo1_contador": 14,
         "promo2_contador": 0,
         "promo3_contador": 0,
         "fichas_restantes": 0

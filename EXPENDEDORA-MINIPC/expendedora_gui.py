@@ -6,13 +6,15 @@ from datetime import datetime
 import requests
 from User_management import UserManagement
 
-url = "http://192.168.1.33/esp32_project/expendedora/insert_close_expendedora.php"  # URL DE CIERRES 
+url = "http://192.168.1.33/esp32_project/expendedora/insert_close_expendedora.php"  # URL DE CIERRES y subcierres
 urlDatos = "http://192.168.1.33/esp32_project/expendedora/insert_data_expendedora.php"  # URL DE REPORTES
-urlSubCierre = "http://192.168.1.33/esp32_project/EXPENDEDORA/insert_subclose_expendedora.php"  # URL DE SUBCIERRES
+urlSubcierre = "http://192.168.1.33/esp32_project/expendedora/insert_subcierre_expendedora.php"  # URL DE SUBCIERRES
+
 
 class ExpendedoraGUI:
     def __init__(self, root, username):
         self.root = root
+        self.username = username
         self.root.title("Expendedora - Control")
         self.root.geometry("800x500")
         self.root.configure(bg="#f0f0f0")
@@ -366,7 +368,7 @@ class ExpendedoraGUI:
             "partial_p1": self.contadores_parciales['promo1_contador'],
             "partial_p2": self.contadores_parciales['promo2_contador'],
             "partial_p3": self.contadores_parciales['promo3_contador'],
-            "employee_id": 1  # Reemplazar con el ID del empleado actual
+            "employee_id": self.username  # Reemplazar con el ID del empleado actual
         }
         
         mensaje_subcierre = (
@@ -380,7 +382,7 @@ class ExpendedoraGUI:
         
         # Enviar datos al servidor
         try:
-            response = requests.post(urlSubCierre, json=subcierre_info)
+            response = requests.post(urlSubcierre, json=subcierre_info)
             if response.status_code == 200:
                 print("Datos de cierre parcial enviados con éxito")
             else:

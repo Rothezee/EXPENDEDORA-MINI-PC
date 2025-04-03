@@ -6,7 +6,7 @@ from User_management import UserManagement
 
 def start_gui():
     root = tk.Tk()
-    app = ExpendedoraGUI(root, username)
+    app = ExpendedoraGUI(root, username="username") 
     root.mainloop()
 def main(username):
     # Inicializar la base de datos
