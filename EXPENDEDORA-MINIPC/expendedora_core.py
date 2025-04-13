@@ -4,7 +4,6 @@ import time
 import requests
 import sqlite3
 import threading
-import time
 import tkinter as tk
 import json
 import os
@@ -21,7 +20,7 @@ BOTON_ENTREGA = 26
 TEST = 4
 TEST1 = 34
 TEST2 = 35
-ENTHOPER = 32  
+ENTHOPER = 32  # Sensor para contar fichas
 SALHOPER = 12  
 BOTON = 36  
 SAL1 = 0  
@@ -187,11 +186,28 @@ def entregar_fichas():
     global fichas
 
     while fichas > 0:
-        GPIO.output(SALIDA, GPIO.HIGH)
-        time.sleep(0.2)
-        GPIO.output(SALIDA, GPIO.LOW)
-        fichas -= 1
-        time.sleep(0.4)
+        GPIO.output(SALIDA, GPIO.HIGH)  # Activa el motor
+        sensor_detectado = False
+        tiempo_inicio = time.time()  # Marca de tiempo para evitar bloqueos
+
+        # Verifica la detección del sensor para contar la ficha dispensada
+        while not sensor_detectado:
+            if GPIO.input(ENTHOPER) == GPIO.LOW:  # El sensor detecta una ficha
+                sensor_detectado = True
+
+            # Si el tiempo excede un límite (e.g., 5 segundos), salir del ciclo
+            if time.time() - tiempo_inicio > 5:
+                print("Error: Tiempo excedido esperando ficha.")
+                break
+
+        GPIO.output(SALIDA, GPIO.LOW)  # Desactiva el motor
+        time.sleep(0.4)  # Pausa antes de intentar la siguiente ficha
+
+        if sensor_detectado:
+            fichas -= 1  # Reduce el contador de fichas
+            print(f"Ficha dispensada. Fichas restantes: {fichas}")
+        else:
+            print("Error: No se detectó la salida de una ficha.")
 
 # --- FUNCIONES PARA LA GUI ---
 def obtener_dinero_ingresado():
