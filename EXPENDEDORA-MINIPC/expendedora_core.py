@@ -1,5 +1,6 @@
 from expendedora_gui import ExpendedoraGUI
-from gpio_sim import GPIO
+from gpio_sim import GPIO #import rpi.GPIO as GPIO  # Descomentar para usar en hardware real
+# from gpio_sim import GPIO  # Simulación de GPIO para pruebas sin hardware
 import time
 import requests
 import sqlite3
@@ -14,13 +15,13 @@ registro_file = "registro.json"
 
 # --- CONFIGURACIÓN DE PINES ---
 ECOIN = 35  
-SALIDA = 13  
+SALIDA = 24  
 AC = 16  
 BOTON_ENTREGA = 26  
 TEST = 4
 TEST1 = 34
 TEST2 = 35
-ENTHOPER = 32  # Sensor para contar fichas
+ENTHOPER = 23  # Sensor para contar fichas
 SALHOPER = 12  
 BOTON = 36  
 SAL1 = 0  
@@ -30,8 +31,8 @@ BARRERA = 34
 DB_FILE = "expendedora.db"
 
 # --- CONFIGURACIÓN DE SERVIDORES ---
-SERVER_HEARTBEAT = "http://192.168.1.33/esp32_project/insert_heartbeat.php"
-SERVER_CIERRE = "http://192.168.1.33/esp32_project/insert_close_expendedora.php"
+SERVER_HEARTBEAT = "http://192.168.1.35/esp32_project/insert_heartbeat.php"
+SERVER_CIERRE = "http://192.168.1.35/esp32_project/insert_close_expendedora.php"
 
 # --- VARIABLES DEL SISTEMA ---
 cuenta = 0
@@ -182,7 +183,7 @@ def convertir_fichas():
     r_sal += fichas
 
 # --- MANEJO DE HOPPER Y ENTREGA DE FICHAS ---
-def entregar_fichas():
+def entregar_fichas(gui=None):
     global fichas
 
     while fichas > 0:
@@ -206,6 +207,10 @@ def entregar_fichas():
         if sensor_detectado:
             fichas -= 1  # Reduce el contador de fichas
             print(f"Ficha dispensada. Fichas restantes: {fichas}")
+
+            # Actualizar la GUI si se proporciona
+            if gui:
+                gui.actualizar_fichas(fichas)
         else:
             print("Error: No se detectó la salida de una ficha.")
 
@@ -217,11 +222,14 @@ def obtener_fichas_disponibles():
     return fichas
 
 def expender_fichas(cantidad):
-    global fichas, cuenta
+    global fichas
     if fichas >= cantidad:
-        fichas -= cantidad
+        for _ in range(cantidad):
+            entregar_fichas()
         return True
-    return False
+    else:
+        print("Error: No hay suficientes fichas en el dispensador.")
+        return False
 
 # --- PROGRAMA PRINCIPAL ---
 def main():
