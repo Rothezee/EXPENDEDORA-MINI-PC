@@ -18,11 +18,21 @@ fi
 
 # Configuración personalizable
 CAJERO_USER="cajero"
-APP_PATH="/home/$CAJERO_USER/mi_aplicacion.py"
+APP_PATH="/home/admin/EXPENDEDORA-MINI-PC/EXPENDEDORA-MINIPC/main.py"
 
 echo "🔧 Iniciando configuración..."
 echo "Usuario del cajero: $CAJERO_USER"
 echo "Ruta de la aplicación: $APP_PATH"
+echo ""
+
+# Verificar que la aplicación existe
+if [ ! -f "$APP_PATH" ]; then
+    echo "❌ ERROR: No se encontró la aplicación en $APP_PATH"
+    echo "   Verifica que la ruta sea correcta y que el archivo exista."
+    exit 1
+fi
+
+echo "✅ Aplicación encontrada: $APP_PATH"
 echo ""
 
 # 1. Actualizar sistema
@@ -52,9 +62,24 @@ ExecStart=
 ExecStart=-/sbin/agetty --autologin $CAJERO_USER --noclear %I \$TERM
 EOF
 
-# 5. Crear script de inicio de la aplicación
+# 5. Dar permisos al usuario cajero para ejecutar la aplicación
+echo "🔑 Configurando permisos para la aplicación..."
+# Dar permisos de ejecución al directorio /home/admin
+chmod o+x /home/admin
+chmod o+x /home/admin/EXPENDEDORA-MINI-PC
+chmod o+x /home/admin/EXPENDEDORA-MINI-PC/EXPENDEDORA-MINIPC
+# Dar permisos de lectura al archivo
+chmod o+r /home/admin/EXPENDEDORA-MINI-PC/EXPENDEDORA-MINIPC/main.py
+
+# También agregar cajero al grupo admin si existe
+if getent group admin > /dev/null 2>&1; then
+    usermod -a -G admin $CAJERO_USER
+    echo "   Usuario $CAJERO_USER agregado al grupo admin"
+fi
+
+# 6. Crear script de inicio de la aplicación
 echo "🚀 Creando script de inicio..."
-cat > /home/$CAJERO_USER/start_cajero.sh << 'EOF'
+cat > /home/$CAJERO_USER/start_cajero.sh << EOF
 #!/bin/bash
 
 # Configurar display
@@ -68,40 +93,19 @@ xset s noblank
 # Ocultar cursor del mouse después de 0.1 segundos
 unclutter -idle 0.1 -root &
 
+# Cambiar al directorio de la aplicación para que funcionen las rutas relativas
+cd /home/admin/EXPENDEDORA-MINI-PC/EXPENDEDORA-MINIPC
+
 # Loop infinito para mantener la aplicación corriendo
 while true; do
     echo "Iniciando aplicación del cajero..."
+    echo "Ejecutando: python3 $APP_PATH"
     
-    # AQUÍ CAMBIA LA RUTA A TU APLICACIÓN
-    # Ejemplo: python3 /home/cajero/mi_aplicacion.py
-    # O: /home/cajero/mi_programa_ejecutable
+    # Ejecutar la aplicación
+    python3 $APP_PATH
     
-    # Por ahora, mostraremos un mensaje de ejemplo
-    python3 -c "
-import tkinter as tk
-import time
-
-root = tk.Tk()
-root.title('CAJERO AUTOMÁTICO')
-root.configure(bg='black')
-root.attributes('-fullscreen', True)
-
-label = tk.Label(root, 
-                text='🏧 CAJERO AUTOMÁTICO\\n\\nConfiguración completada\\nReemplaza este mensaje con tu aplicación\\n\\nPresiona ESC para salir (temporal)', 
-                font=('Arial', 24), 
-                fg='white', 
-                bg='black',
-                justify='center')
-label.pack(expand=True)
-
-def on_escape(event):
-    root.destroy()
-
-root.bind('<Escape>', on_escape)
-root.mainloop()
-"
-    
-    echo "La aplicación se cerró. Reiniciando en 3 segundos..."
+    # Si la aplicación se cierra, registrar el evento y reiniciar
+    echo "La aplicación se cerró en \$(date). Reiniciando en 3 segundos..."
     sleep 3
 done
 EOF
@@ -109,7 +113,7 @@ EOF
 chmod +x /home/$CAJERO_USER/start_cajero.sh
 chown $CAJERO_USER:$CAJERO_USER /home/$CAJERO_USER/start_cajero.sh
 
-# 6. Configurar Openbox
+# 7. Configurar Openbox
 echo "🪟 Configurando Openbox..."
 mkdir -p /home/$CAJERO_USER/.config/openbox
 chown -R $CAJERO_USER:$CAJERO_USER /home/$CAJERO_USER/.config
@@ -144,18 +148,18 @@ cat > /home/$CAJERO_USER/.config/openbox/rc.xml << 'EOF'
     <primaryMonitor>1</primaryMonitor>
   </placement>
   <theme>
-    <name>Clearlooks</name>
+    <n>Clearlooks</n>
     <titleLayout>NLIMC</titleLayout>
     <keepBorder>yes</keepBorder>
     <animateIconify>yes</animateIconify>
     <font place="ActiveWindow">
-      <name>sans</name>
+      <n>sans</n>
       <size>8</size>
       <weight>bold</weight>
       <slant>normal</slant>
     </font>
     <font place="InactiveWindow">
-      <name>sans</name>
+      <n>sans</n>
       <size>8</size>
       <weight>bold</weight>
       <slant>normal</slant>
@@ -201,6 +205,12 @@ cat > /home/$CAJERO_USER/.config/openbox/rc.xml << 'EOF'
     <keybind key="C-A-l"><action name="Nothing"/></keybind>
     <keybind key="A-Tab"><action name="Nothing"/></keybind>
     <keybind key="A-S-Tab"><action name="Nothing"/></keybind>
+    <keybind key="C-A-F1"><action name="Nothing"/></keybind>
+    <keybind key="C-A-F2"><action name="Nothing"/></keybind>
+    <keybind key="C-A-F3"><action name="Nothing"/></keybind>
+    <keybind key="C-A-F4"><action name="Nothing"/></keybind>
+    <keybind key="C-A-F5"><action name="Nothing"/></keybind>
+    <keybind key="C-A-F6"><action name="Nothing"/></keybind>
   </keyboard>
   <mouse>
     <dragThreshold>1</dragThreshold>
@@ -214,12 +224,13 @@ cat > /home/$CAJERO_USER/.config/openbox/rc.xml << 'EOF'
       <maximized>yes</maximized>
       <skip_pager>yes</skip_pager>
       <skip_taskbar>yes</skip_taskbar>
+      <decor>no</decor>
     </application>
   </applications>
 </openbox_config>
 EOF
 
-# 7. Configurar archivos de inicio del usuario
+# 8. Configurar archivos de inicio del usuario
 echo "⚙️  Configurando archivos de inicio del usuario..."
 
 # .bash_profile para iniciar X automáticamente
@@ -237,10 +248,10 @@ EOF
 
 chmod +x /home/$CAJERO_USER/.xinitrc
 
-# 8. Asignar permisos correctos
+# 9. Asignar permisos correctos
 chown -R $CAJERO_USER:$CAJERO_USER /home/$CAJERO_USER/
 
-# 9. Deshabilitar TTYs adicionales
+# 10. Deshabilitar TTYs adicionales
 echo "🔒 Deshabilitando TTYs adicionales..."
 systemctl mask getty@tty2.service
 systemctl mask getty@tty3.service
@@ -248,151 +259,139 @@ systemctl mask getty@tty4.service
 systemctl mask getty@tty5.service
 systemctl mask getty@tty6.service
 
-# 10. Configurar firewall básico
+# 11. Configurar firewall básico
 echo "🛡️  Configurando firewall..."
 apt install -y ufw
 ufw --force enable
 ufw default deny incoming
 ufw default allow outgoing
 
-# 11. Recargar configuración de systemd
+# 12. Configurar sudoers para permitir que cajero ejecute la aplicación como admin (opcional)
+echo "🔐 Configurando permisos sudo (opcional)..."
+cat > /etc/sudoers.d/cajero << EOF
+# Permitir que cajero ejecute la aplicación como admin sin contraseña
+$CAJERO_USER ALL=(admin) NOPASSWD: /usr/bin/python3 /home/admin/EXPENDEDORA-MINI-PC/EXPENDEDORA-MINIPC/main.py
+# Permitir reinicio y apagado
+$CAJERO_USER ALL=(ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot
+EOF
+
+# 13. Instalar dependencias de Python que pueda necesitar tu aplicación
+echo "🐍 Instalando dependencias Python comunes..."
+pip3 install --upgrade pip
+# Agrega aquí las dependencias específicas de tu aplicación
+# pip3 install tkinter pygame requests etc.
+
+# 14. Recargar configuración de systemd
 echo "🔄 Recargando configuración de systemd..."
 systemctl daemon-reload
 systemctl enable getty@tty1.service
 
-# 12. Crear script de aplicación de ejemplo (si no existe)
-if [ ! -f "$APP_PATH" ]; then
-    echo "📝 Creando aplicación de ejemplo..."
-    cat > "$APP_PATH" << 'EOF'
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Aplicación de ejemplo para cajero automático
-Reemplaza este archivo con tu aplicación real
-"""
+# 15. Crear un log para la aplicación
+echo "📝 Configurando logging..."
+mkdir -p /var/log/cajero
+touch /var/log/cajero/aplicacion.log
+chown $CAJERO_USER:$CAJERO_USER /var/log/cajero/aplicacion.log
 
-import tkinter as tk
-from tkinter import messagebox
-import sys
+# Modificar el script para incluir logging
+cat > /home/$CAJERO_USER/start_cajero_with_log.sh << EOF
+#!/bin/bash
 
-class CajeroApp:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("CAJERO AUTOMÁTICO")
-        self.root.configure(bg='#1a1a2e')
-        self.root.attributes('-fullscreen', True)
-        
-        # Crear interfaz
-        self.create_interface()
-        
-        # Bind para salir con ESC (solo para pruebas)
-        self.root.bind('<Escape>', self.salir)
-        
-    def create_interface(self):
-        # Título principal
-        title_label = tk.Label(
-            self.root,
-            text="🏧 CAJERO AUTOMÁTICO",
-            font=('Arial', 32, 'bold'),
-            fg='white',
-            bg='#1a1a2e'
-        )
-        title_label.pack(pady=50)
-        
-        # Mensaje de estado
-        status_label = tk.Label(
-            self.root,
-            text="Sistema configurado correctamente\nReemplaza este archivo con tu aplicación real",
-            font=('Arial', 18),
-            fg='#4ade80',
-            bg='#1a1a2e',
-            justify='center'
-        )
-        status_label.pack(pady=20)
-        
-        # Botones de ejemplo
-        button_frame = tk.Frame(self.root, bg='#1a1a2e')
-        button_frame.pack(pady=50)
-        
-        tk.Button(
-            button_frame,
-            text="Consultar Saldo",
-            font=('Arial', 16),
-            width=20,
-            height=2,
-            bg='#3b82f6',
-            fg='white',
-            command=self.consultar_saldo
-        ).pack(pady=10)
-        
-        tk.Button(
-            button_frame,
-            text="Retirar Dinero",
-            font=('Arial', 16),
-            width=20,
-            height=2,
-            bg='#ef4444',
-            fg='white',
-            command=self.retirar_dinero
-        ).pack(pady=10)
-        
-        # Instrucciones
-        instructions_label = tk.Label(
-            self.root,
-            text="Presiona ESC para salir (solo para pruebas)",
-            font=('Arial', 12),
-            fg='#6b7280',
-            bg='#1a1a2e'
-        )
-        instructions_label.pack(side='bottom', pady=20)
-    
-    def consultar_saldo(self):
-        messagebox.showinfo("Saldo", "Su saldo actual es: $1,234.56")
-    
-    def retirar_dinero(self):
-        messagebox.showinfo("Retiro", "Funcionalidad de retiro no implementada")
-    
-    def salir(self, event=None):
-        if messagebox.askyesno("Salir", "¿Está seguro que desea salir?"):
-            self.root.destroy()
-    
-    def run(self):
-        self.root.mainloop()
+# Configurar display
+export DISPLAY=:0
 
-if __name__ == "__main__":
-    app = CajeroApp()
-    app.run()
+# Archivo de log
+LOG_FILE="/var/log/cajero/aplicacion.log"
+
+# Función para logging
+log_message() {
+    echo "\$(date '+%Y-%m-%d %H:%M:%S') - \$1" >> "\$LOG_FILE"
+    echo "\$1"
+}
+
+# Deshabilitar protector de pantalla y gestión de energía
+xset s off
+xset -dpms
+xset s noblank
+
+# Ocultar cursor del mouse después de 0.1 segundos
+unclutter -idle 0.1 -root &
+
+# Cambiar al directorio de la aplicación para que funcionen las rutas relativas
+cd /home/admin/EXPENDEDORA-MINI-PC/EXPENDEDORA-MINIPC
+
+# Loop infinito para mantener la aplicación corriendo
+while true; do
+    log_message "Iniciando aplicación del cajero..."
+    log_message "Ejecutando: python3 $APP_PATH"
+    
+    # Ejecutar la aplicación y capturar errores
+    python3 $APP_PATH 2>> "\$LOG_FILE"
+    EXIT_CODE=\$?
+    
+    # Registrar la salida
+    if [ \$EXIT_CODE -eq 0 ]; then
+        log_message "La aplicación se cerró normalmente."
+    else
+        log_message "La aplicación se cerró con error (código: \$EXIT_CODE)."
+    fi
+    
+    log_message "Reiniciando en 3 segundos..."
+    sleep 3
+done
 EOF
-    
-    chmod +x "$APP_PATH"
-    chown $CAJERO_USER:$CAJERO_USER "$APP_PATH"
-fi
+
+chmod +x /home/$CAJERO_USER/start_cajero_with_log.sh
+chown $CAJERO_USER:$CAJERO_USER /home/$CAJERO_USER/start_cajero_with_log.sh
+
+# Actualizar autostart para usar el script con logging
+cat > /home/$CAJERO_USER/.config/openbox/autostart << EOF
+#!/bin/bash
+/home/$CAJERO_USER/start_cajero_with_log.sh &
+EOF
 
 echo ""
 echo "✅ ¡Configuración completada exitosamente!"
 echo ""
 echo "=========================================="
+echo "           INFORMACIÓN IMPORTANTE:"
+echo "=========================================="
+echo ""
+echo "📍 APLICACIÓN CONFIGURADA:"
+echo "   $APP_PATH"
+echo ""
+echo "👤 USUARIO DEL SISTEMA:"
+echo "   $CAJERO_USER"
+echo ""
+echo "📋 ARCHIVOS IMPORTANTES:"
+echo "   • Script de inicio: /home/$CAJERO_USER/start_cajero_with_log.sh"
+echo "   • Configuración Openbox: /home/$CAJERO_USER/.config/openbox/"
+echo "   • Log de aplicación: /var/log/cajero/aplicacion.log"
+echo ""
+echo "=========================================="
 echo "           PRÓXIMOS PASOS:"
 echo "=========================================="
 echo ""
-echo "1. 📝 EDITA tu aplicación en:"
-echo "   $APP_PATH"
-echo ""
-echo "2. 🔧 O modifica el script de inicio:"
-echo "   /home/$CAJERO_USER/start_cajero.sh"
-echo ""
-echo "3. 🔄 Reinicia el sistema:"
+echo "1. 🔄 Reinicia el sistema:"
 echo "   sudo reboot"
 echo ""
-echo "4. 🔒 Después del reinicio:"
+echo "2. 📊 Después del reinicio:"
 echo "   - El sistema iniciará automáticamente como '$CAJERO_USER'"
 echo "   - Tu aplicación se ejecutará en pantalla completa"
-echo "   - ESC estará deshabilitado (excepto en la app de ejemplo)"
+echo "   - Los logs se guardarán en /var/log/cajero/aplicacion.log"
 echo ""
-echo "⚠️  IMPORTANTE:"
-echo "   - Cambia la contraseña del usuario pi: passwd pi"
-echo "   - Cambia la contraseña del usuario cajero: passwd cajero"
+echo "3. 🔍 Para ver los logs en tiempo real:"
+echo "   sudo tail -f /var/log/cajero/aplicacion.log"
+echo ""
+echo "4. 🛠️  Para hacer mantenimiento:"
+echo "   - Cambiar a TTY2: Ctrl+Alt+F2 (si está habilitado)"
+echo "   - O conectarse por SSH si está habilitado"
+echo ""
+echo "⚠️  IMPORTANTE - SEGURIDAD:"
+echo "   - Cambia la contraseña del usuario pi: sudo passwd pi"
+echo "   - Cambia la contraseña del usuario admin: sudo passwd admin"
+echo "   - Configura contraseña para cajero: sudo passwd cajero"
 echo "   - Deshabilita SSH si no lo necesitas: sudo systemctl disable ssh"
 echo ""
 echo "🎯 ¡Tu cajero está listo para usar!"
+echo "   La aplicación se ejecutará automáticamente al reiniciar."
 echo "=========================================="
